@@ -11,71 +11,110 @@ O código realiza a automação da irrigação de uma planta ou solo com base na
 
 2.1 Trechos comentados / pseudocódigo 
 
-1. Inclusão das bibliotecas 
+2.1.1 Inclusão das bibliotecas 
 
-#include <ESP8266WiFi.h>      // Conexão com Wi-Fi 
-#include <PubSubClient.h>     // Cliente MQTT para envio de dados 
-2. Credenciais da rede Wi-Fi 
+#include <ESP8266WiFi.h> // Conexão com Wi-Fi 
+
+#include <PubSubClient.h>// Cliente MQTT para envio de dados 
+
+
+2.1.2 Credenciais da rede Wi-Fi 
 
 const char* ssid = "ArrigArdu"; 
+
 const char* password = ""; 
 
-3. Configuração do servidor MQTT 
+
+2.1.3 Configuração do servidor MQTT 
 
 const char* mqtt_server = "192.168.1.100"; // IP do broker local (ex: Mosquitto) 
-const int mqtt_port = 1883; 
 
-4. Definição dos pinos e limiares 
+const int mqtt_port = 1883;
+
+
+2.1.4 Definição dos pinos e limiares 
 
 #define SENSOR_UMIDADE A0 
-#define RELE_BOMBA     D1 
-#define LIMIAR_SECO    700     // O valor 700 é um limite empírico; acima dele, considera-se que o solo está seco. 
 
-5. Função de conexão Wi-Fi 
+#define RELE_BOMBA     D1
+
+#define LIMIAR_SECO    700     // O valor 700 é um limite empírico; acima dele, considera-se que o solo está seco.
+
+
+2.1.5 Função de conexão Wi-Fi
+
 void setup_wifi() { 
+
   WiFi.begin(ssid, password); 
+  
   while (WiFi.status() != WL_CONNECTED) { 
     delay(500); 
-    Serial.print("."); 
+    
+   Serial.print("."); 
+    
   } 
 } 
 
-6. Função de conexão ao MQTT 
+
+2.1.6 Função de conexão ao MQTT 
 
 void reconnect_mqtt() { 
-  while (!client.connected()) { 
-    client.connect("ESP8266Client", mqtt_user, mqtt_pass); 
+
+  while (!client.connected()) {
+  
+   client.connect("ESP8266Client", mqtt_user, mqtt_pass); 
     delay(5000); 
   } 
 } 
 
-7. Setup inicial 
+
+2.1.7 Setup inicial 
 
 void setup() { 
+
   Serial.begin(115200); 
+  
   pinMode(RELE_BOMBA, OUTPUT); 
+  
   digitalWrite(RELE_BOMBA, LOW); 
+  
   setup_wifi(); 
+  
   client.setServer(mqtt_server, mqtt_port);} 
 
-8. Loop principal 
+
+2.1.8 Loop principal 
 
 void loop() { 
-  if (!client.connected()) { 
-    reconnect_mqtt(); 
+
+  if (!client.connected()) {
+  
+  reconnect_mqtt(); 
+  
   } 
+  
   client.loop(); 
 
-9. Leitura da umidade e controle da bomba 
+
+2.1.9 Leitura da umidade e controle da bomba
+    
 int valor = analogRead(SENSOR_UMIDADE); 
  
 if (valor > LIMIAR_SECO) { 
+
   digitalWrite(RELE_BOMBA, HIGH); 
-  client.publish("IrrigArdu/solo/status", "BOMBA_LIGADA"); 
+  
+  client.publish("IrrigArdu/solo/status", "BOMBA_LIGADA");
+  
 } else { 
-  digitalWrite(RELE_BOMBA, LOW); 
+
+  digitalWrite(RELE_BOMBA, LOW);
+  
   client.publish("IrrigArdu/solo/status", "BOMBA_DESLIGADA"); 
 } 
+
+
+
  
 3. Principais funções do código 
 
@@ -126,8 +165,11 @@ Objeto auxiliar necessário para o PubSubClient funcionar com redes Wi-Fi.
 
 Interface Wi-Fi: Conexão com rede local usando o ESP8266. 
 Protocolo de Comunicação: MQTT (TCP/IP). 
-Tópicos utilizados: 
+
+Tópicos utilizados:
+
 /irrigacao/umidade – publicação do nível de umidade. 
+
 /irrigacao/comando – subscrição para comandos de irrigação manual. 
  
 

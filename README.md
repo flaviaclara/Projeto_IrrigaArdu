@@ -1,8 +1,12 @@
 # Projeto_IrrigaArdu
+
+
+
+
 - Sistema de Irrigação Automática
 
 
-  Este projeto é um sistema de irrigação automática inteligente com base em IoT, utilizando o NodeMCU ESP8266, um sensor de umidade do solo e uma bomba de água acionada via relé. O sistema lê periodicamente a umidade do solo e, caso detecte níveis abaixo do limiar definido, aciona automaticamente a irrigação. A comunicação ocorre via protocolo MQTT, permitindo o monitoramento remoto e o acionamento manual por meio de tópicos MQTT. Contudo, devido problemas com o hardware da versão física, não foi possível conectar via protocolo MQTT, porém outra versão foi na plataforma WOKWI, no qual conseguimos avançar com todos os procedimentos requisitados para teste do projeto. O projeto IrrigaArdu é ideal para hortas, jardins ou vasos de plantas que requerem irrigação automatizada e controle à distância. 
+Este projeto é um sistema de irrigação automática inteligente com base em IoT, utilizando o NodeMCU ESP8266, um sensor de umidade do solo e uma bomba de água acionada via relé. O sistema lê periodicamente a umidade do solo e, caso detecte níveis abaixo do limiar definido, aciona automaticamente a irrigação. A comunicação ocorre via protocolo MQTT, permitindo o monitoramento remoto e o acionamento manual por meio de tópicos MQTT. Contudo, devido problemas com o hardware da versão física, não foi possível conectar via protocolo MQTT, porém outra versão foi na plataforma WOKWI, no qual conseguimos avançar com todos os procedimentos requisitados para teste do projeto. O projeto IrrigaArdu é ideal para hortas, jardins ou vasos de plantas que requerem irrigação automatizada e controle à distância. 
 O código realiza a automação da irrigação de uma planta ou solo com base na leitura de um sensor de umidade conectado a um ESP32. Ele lê periodicamente os valores analógicos do sensor no pino 34 e, caso o nível de umidade esteja abaixo de um valor mínimo predefinido, aciona uma bomba de água conectada ao pino 2. O sistema permite alternar entre os modos automático e manual por meio de comandos enviados via protocolo MQTT, utilizando um broker público (HiveMQ). No modo manual, é possível ligar ou desligar a bomba remotamente através de mensagens MQTT. O código também envia leituras periódicas de umidade e mensagens de alerta quando a umidade está crítica. Toda a lógica está implementada no arquivo principal do projeto. 
 
  
@@ -26,20 +30,63 @@ Envia os dados e o status da bomba para tópicos MQTT, permitindo monitoramento 
   Fonte 12V DC, Protoboard 
   Jumpers 
   Protoboard breadboard 
-  Resistores 
+  Resistores
+  
  
  
-
-5.  Interfaces, Protocolos e Comunicação 
+- Interfaces, Protocolos e Comunicação 
 
 Interface Wi-Fi: Conexão com rede local usando o ESP8266. 
 Protocolo de Comunicação: MQTT (TCP/IP). 
+
+
 
 Tópicos utilizados:
 
 /irrigacao/umidade – publicação do nível de umidade. 
 
 /irrigacao/comando – subscrição para comandos de irrigação manual. 
+
+
+
+
+-  Pseudocódigo
+
+ 
+
+Inicializa o sistema 
+
+Conecta ao Wi-Fi 
+
+Conecta ao broker MQTT 
+
+A cada 10 segundos: 
+
+       Lê o sensor de umidade 
+
+       Publica a umidade no tópico MQTT 
+
+    Se em modo automático: 
+
+        Se umidade < mínimo, liga bomba 
+
+        Senão, desliga bomba 
+
+    Se umidade < mínimo e bomba desligada: 
+
+        Publica alerta 
+
+Recebe mensagens MQTT: 
+
+    Se tópico for de bomba e modo manual: 
+
+        Liga/desliga bomba 
+
+    Se tópico for de modo: 
+
+        Alterna entre automático e manual 
+
+
  
 
  

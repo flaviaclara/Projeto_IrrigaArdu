@@ -1,5 +1,6 @@
-#include <WiFi.h>
-#include <PubSubClient.h>
+/// Codigo utilizado no projeto fisico.///
+include <WiFi.h>
+include <PubSubClient.h>
 
 const char* ssid = "Wokwi-GUEST";
 const char* password = "";
@@ -70,3 +71,325 @@ void loop() {
 
   delay(2000);
 }
+
+////Codigo utilzado projeto on line Wokwi.///
+
+//2.1.1 Inclusão das bibliotecas// 
+
+#include <WiFi.h>           // Biblioteca para conexão Wi-Fi 
+
+#include <PubSubClient.h>   // Biblioteca para comunicação MQTT 
+
+#include <Ticker.h>         // Biblioteca para execução periódica de funções sem bloquear o loop 
+
+ 
+
+//2.1.2 Configurações de Wi-Fi //
+
+const char* ssid = "Wokwi-GUEST";     // Nome da rede Wi-Fi 
+
+const char* password = "";            // Senha da rede Wi-Fi (vazio no Wokwi) 
+
+ 
+
+//2.1.3 Configurações MQTT// 
+
+const char* mqtt_server = "broker.hivemq.com"; // Servidor público MQTT const char*  
+
+mqtt_topic_pub = "irrigacao/umidade"; // Tópico para publicar umidade const char*  
+
+mqtt_topic_sub = "irrigacao/ligar_bomba"; // Tópico para controlar bomba const char*  
+
+mqtt_topic_modo = "irrigacao/modo"; // Tópico para alternar modo  
+
+automático/manual const char* mqtt_topic_alerta = "irrigacao/alerta"; // Tópico para alertas 
+
+ 
+
+//2.1.4 Pinos// 
+
+#define SENSOR_PIN 34        // Pino analógico para o sensor de umidade 
+
+#define BOMBA_PIN 2          // Pino digital para controle da bomba 
+
+#define UMIDADE_MINIMA 50    // Valor mínimo de umidade para irrigação 
+
+ 
+
+//2.1.5 Variáveis de Controle// 
+
+int umidade = 0;            // Armazena a umidade lida 
+
+bool bombaLigada = false;   // Indica se a bomba está ligada 
+
+bool modoManual = false;    // Indica o modo: false = automático, true = manual 
+
+ 
+
+//2.1.6 Instâncias //
+
+WiFiClient espClient;             // Objeto para conexão Wi-Fi 
+
+PubSubClient client(espClient);  // Cliente MQTT 
+
+Ticker timer;                    // Timer para execução periódica 
+
+ 
+//2.1.7 Conectar Wi-Fi //
+
+void conectaWiFi() { 
+
+  Serial.print("Conectando no Wi-Fi"); 
+
+  while (WiFi.status() != WL_CONNECTED) { 
+
+    WiFi.begin(ssid, password); 
+
+    int tentativas = 0; 
+
+  
+
+    // Pisca a bomba enquanto tenta conectar 
+
+    while (WiFi.status() != WL_CONNECTED && tentativas < 10) { 
+
+      digitalWrite(BOMBA_PIN, HIGH); 
+
+      delay(500); 
+
+      digitalWrite(BOMBA_PIN, LOW); 
+
+      delay(500); 
+
+      Serial.print("."); 
+
+      tentativas++; 
+
+    } 
+
+  
+
+    if (WiFi.status() != WL_CONNECTED) { 
+
+      Serial.println("\n Falha na conexão. Tentando novamente..."); 
+
+    } 
+
+  } 
+
+  Serial.println("\n Wi-Fi conectado!"); 
+
+  Serial.println(WiFi.localIP()); 
+
+  // Indica conexão bem-sucedida ligando a bomba por 2 segundos 
+
+  digitalWrite(BOMBA_PIN, HIGH); 
+
+  delay(2000); 
+
+  digitalWrite(BOMBA_PIN, LOW); 
+
+} 
+
+//2.1.8 Callback MQTT //
+
+void callback(char* topic, byte* payload, unsigned int length) { String comando = ""; 
+
+// Converte a mensagem recebida em string for (unsigned int i = 0; i < length; i++) { comando += (char)payload[i]; } 
+
+Serial.print(" Mensagem recebida no tópico: "); Serial.println(topic); Serial.print(" Comando: "); Serial.println(comando); 
+
+ 
+
+//2.1.9 Controle da Bomba Manual// 
+
+if (String(topic) == mqtt_topic_sub) { 
+     if (modoManual) {  // Só aceita controle se estiver no modo manual 
+         if (comando == "1") { 
+             bombaLigada = true; 
+             digitalWrite(BOMBA_PIN, HIGH); 
+             Serial.println(" Bomba LIGADA manualmente via MQTT."); 
+         } else if (comando == "0") { 
+             bombaLigada = false; 
+             digitalWrite(BOMBA_PIN, LOW); 
+             Serial.println(" Bomba DESLIGADA manualmente via MQTT."); 
+         } else { 
+             Serial.println(" Comando desconhecido."); 
+         } 
+     } else { 
+         Serial.println(" Ignorado. Está no modo automático."); 
+     } 
+ } 
+  
+ 
+
+//2.1.10 Controle de modo (Manual e Automático)// 
+
+if (String(topic) == mqtt_topic_modo) { 
+     if (comando == "manual") { 
+         modoManual = true; 
+         Serial.println(" Modo MANUAL ativado."); 
+     } else if (comando == "auto") { 
+         modoManual = false; 
+         Serial.println(" Modo AUTOMÁTICO ativado."); 
+     } else { 
+         Serial.println(" Comando de modo desconhecido."); 
+     } 
+ } 
+
+ 
+
+//2.1.11 Reconectar MQTT //
+
+ 
+
+void reconnect() { 
+     while (!client.connected()) { 
+         Serial.print("Tentando conexão MQTT..."); 
+         if (client.connect("esp32-irrigacao")) { 
+             Serial.println(" Conectado!"); 
+  
+            // Inscreve-se nos tópicos para receber comandos 
+             client.subscribe(mqtt_topic_sub); 
+             client.subscribe(mqtt_topic_modo); 
+         } else { 
+             Serial.print(" Falhou, rc="); 
+             Serial.print(client.state()); 
+             Serial.println(" tentando novamente em 5 segundos"); 
+             delay(5000); 
+         } 
+     } 
+ } 
+  
+ 
+
+//2.1.12 Função para envio periódico de umidade// 
+ 
+
+ 
+
+void enviaUmidade() { 
+     int valorSensor = analogRead(SENSOR_PIN);              // Lê valor analógico do sensor 
+     umidade = map(valorSensor, 0, 4095, 100, 0);            // Converte para percentual invertido 
+     String payload = String(umidade);                       // Prepara o dado para envio MQTT 
+  
+    client.publish(mqtt_topic_pub, payload.c_str());        // Publica a umidade no tópico 
+     Serial.print(" Umidade publicada: "); 
+     Serial.println(payload); 
+  
+    if (!modoManual) {                                      // Controle automático 
+         if (umidade < UMIDADE_MINIMA) { 
+             bombaLigada = true; 
+             digitalWrite(BOMBA_PIN, HIGH); 
+             Serial.println(" Bomba LIGADA automaticamente."); 
+         } else { 
+             bombaLigada = false; 
+             digitalWrite(BOMBA_PIN, LOW); 
+             Serial.println(" Bomba DESLIGADA automaticamente."); 
+         } 
+     } 
+  
+    // Envia alerta se a umidade estiver muito baixa e bomba desligada 
+     if (umidade < UMIDADE_MINIMA && !bombaLigada) { 
+         client.publish(mqtt_topic_alerta, "ALERTA: Umidade abaixo do mínimo!"); 
+         Serial.println(" ALERTA: Umidade abaixo do mínimo!"); 
+     } 
+ } 
+  
+
+ 
+
+//2.1.13 Setup //
+
+ 
+
+void setup() { 
+     pinMode(BOMBA_PIN, OUTPUT);          // Define pino da bomba como saída 
+     digitalWrite(BOMBA_PIN, LOW);        // Garante que a bomba inicie desligada 
+  
+    Serial.begin(115200);                // Inicia comunicação serial 
+     conectaWiFi();                       // Conecta ao Wi-Fi 
+  
+    client.setServer(mqtt_server, 1883); // Configura broker MQTT 
+     client.setCallback(callback);        // Define função de callback para mensagens recebidas 
+  
+    timer.attach(10, enviaUmidade);      // Executa enviaUmidade() a cada 10 segundos 
+ } 
+
+ 
+
+//2.1.14   Loop Principal// 
+
+ 
+
+void loop() { 
+     if (!client.connected()) { 
+         reconnect();                    // Reconecta ao MQTT se estiver desconectado 
+     } 
+  
+    client.loop();                      // Mantém conexão MQTT ativa e escuta mensagens 
+ } 
+
+ 
+
+//2.1.15  Diagrama dos componentes// 
+
+ 
+
+Cria o desenho dos componentes (Led, placa, coordenadas e etc) 
+
+{ 
+
+  "version": 1, 
+
+  "author": "Anonymous maker", 
+
+  "editor": "wokwi", 
+
+  "parts": [ 
+
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} }, 
+
+    { "type": "wokwi-led", "id": "led1", "top": 44.4, "left": 167, "attrs": { "color": "blue" } }, 
+
+    { 
+
+      "type": "wokwi-resistor", 
+
+      "id": "r1", 
+
+      "top": 157.55, 
+
+      "left": 134.4, 
+
+      "attrs": { "value": "220" } 
+
+    }, 
+
+    { "type": "wokwi-potentiometer", "id": "pot1", "top": -58.9, "left": -115.4, "attrs": {} } 
+
+  ], 
+
+  "connections": [ 
+
+    [ "esp:TX", "$serialMonitor:RX", "", [] ], 
+
+    [ "esp:RX", "$serialMonitor:TX", "", [] ], 
+
+    [ "esp:2", "r1:1", "green", [ "h0" ] ], 
+
+    [ "r1:2", "led1:A", "green", [ "v0" ] ], 
+
+    [ "esp:GND.3", "led1:C", "black", [ "h0" ] ], 
+
+    [ "pot1:VCC", "esp:3V3", "red", [ "v0" ] ], 
+
+    [ "pot1:GND", "esp:GND.1", "black", [ "v0" ] ], 
+
+    [ "pot1:SIG", "esp:34", "green", [ "v0" ] ] 
+
+  ], 
+
+  "dependencies": {} 
+
+} 
